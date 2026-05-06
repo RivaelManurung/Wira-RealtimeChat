@@ -1,133 +1,245 @@
 "use client"
 
-import { 
-  Search, 
-  Filter, 
-  MoreHorizontal, 
-  Trash2, 
-  Eye, 
-  ShieldAlert,
-  Download,
-  MessageSquare
-} from "lucide-react";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
+import { useState } from "react"
+import Link from "next/link"
+import { Search, ArrowUpDown, CalendarDays, Eye, Trash2, ShieldAlert, MoreHorizontal, MessageSquare } from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/ui/data-table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-const MESSAGES = [
-  { id: "M-901", sender: "Alex Rivai", room: "Designers", content: "Check the new Geist font guys!", status: "safe", date: "2m ago" },
-  { id: "M-902", sender: "John Doe", room: "DM: Sarah", content: "Hey, are you free today?", status: "flagged", date: "1h ago" },
-  { id: "M-903", sender: "Elena S.", room: "Marketing", content: "Buy cheap crypto now at this link...", status: "deleted", date: "3h ago" },
-];
+export type Message = {
+  id: string
+  sender: string
+  room: string
+  content: string
+  status: string
+  date: string
+}
+
+const INITIAL_MESSAGES: Message[] = [
+  { id: "M-901", sender: "Alex Rivai", room: "Designers", content: "Check the new Geist font guys!", status: "safe", date: "6/5/2026" },
+  { id: "M-902", sender: "John Doe", room: "DM: Sarah", content: "Hey, are you free today?", status: "flagged", date: "6/5/2026" },
+  { id: "M-903", sender: "Elena S.", room: "Marketing", content: "Buy cheap crypto now at this link...", status: "deleted", date: "5/5/2026" },
+  { id: "M-904", sender: "Harvey S.", room: "General", content: "Welcome to the team everyone!", status: "safe", date: "5/5/2026" },
+  { id: "M-905", sender: "Donna P.", room: "DM: Mike", content: "Please review the document I sent", status: "safe", date: "4/5/2026" },
+  { id: "M-906", sender: "Louis L.", room: "General", content: "This is completely unacceptable behavior", status: "flagged", date: "4/5/2026" },
+  { id: "M-907", sender: "Rachel Z.", room: "Legal", content: "Contract draft is ready for review", status: "safe", date: "3/5/2026" },
+  { id: "M-908", sender: "Jessica P.", room: "Announcements", content: "Server maintenance tonight at 11pm", status: "safe", date: "2/5/2026" },
+]
 
 export default function AdminMessagesPage() {
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES)
+  const [search, setSearch] = useState("")
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [selectedMsg, setSelectedMsg] = useState<Message | null>(null)
+
+  const filtered = messages.filter(
+    (m) =>
+      m.sender.toLowerCase().includes(search.toLowerCase()) ||
+      m.content.toLowerCase().includes(search.toLowerCase()) ||
+      m.room.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  function handleFlag(msg: Message) {
+    setMessages((prev) =>
+      prev.map((m) => (m.id === msg.id ? { ...m, status: m.status === "flagged" ? "safe" : "flagged" } : m)),
+    )
+    toast.success(msg.status === "flagged" ? "Flag dihapus" : "Pesan di-flag", {
+      description: `Pesan dari ${msg.sender} telah ${msg.status === "flagged" ? "di-unflag" : "di-flag"}.`,
+    })
+  }
+
+  function handleDelete() {
+    if (!selectedMsg) return
+    setMessages((prev) => prev.filter((m) => m.id !== selectedMsg.id))
+    setDeleteOpen(false)
+    toast.success("Pesan dihapus", {
+      description: `Pesan ${selectedMsg.id} dari ${selectedMsg.sender} telah dihapus permanen.`,
+    })
+  }
+
+  function handleMarkDeleted(msg: Message) {
+    setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, status: "deleted" } : m)))
+    toast.success("Pesan ditandai dihapus", { description: `Pesan dari ${msg.sender} ditandai sebagai dihapus.` })
+  }
+
+  const messageColumns: ColumnDef<Message>[] = [
+    {
+      accessorKey: "sender",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          PENGIRIM <ArrowUpDown className="h-3 w-3 opacity-50" />
+        </div>
+      ),
+      cell: ({ row }) => {
+        const sender = row.getValue("sender") as string
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-slate-100 text-slate-600 font-semibold text-xs">{sender[0]}</AvatarFallback>
+            </Avatar>
+            <span className="font-semibold text-slate-700 text-sm">{sender}</span>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "room",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          ROOM <ArrowUpDown className="h-3 w-3 opacity-50" />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <Badge
+          variant="secondary"
+          className="bg-slate-100 text-slate-600 text-[10px] font-medium rounded px-2 py-0.5 border-none"
+        >
+          {row.getValue("room")}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "content",
+      header: () => <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">ISI PESAN</div>,
+      cell: ({ row }) => <p className="text-sm text-muted-foreground truncate max-w-[280px]">{row.getValue("content")}</p>,
+    },
+    {
+      accessorKey: "status",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          STATUS <ArrowUpDown className="h-3 w-3 opacity-50" />
+        </div>
+      ),
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string
+        let cls = "bg-emerald-100 text-emerald-700"
+        if (status === "flagged") cls = "bg-amber-100 text-amber-700"
+        if (status === "deleted") cls = "bg-red-100 text-red-700"
+        return (
+          <Badge
+            variant="secondary"
+            className={`${cls} rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide border-none uppercase`}
+          >
+            {status}
+          </Badge>
+        )
+      },
+    },
+    {
+      accessorKey: "date",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          TANGGAL <ArrowUpDown className="h-3 w-3 opacity-50" />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+          <CalendarDays className="h-4 w-4 opacity-50" />
+          <span>{row.getValue("date")}</span>
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const msg = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/messages/${msg.id}`}>
+                  <Eye className="mr-2 h-4 w-4" /> Lihat Detail
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => handleFlag(msg)} className="text-amber-600">
+                <ShieldAlert className="mr-2 h-4 w-4" /> {msg.status === "flagged" ? "Unflag" : "Flag"}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleMarkDeleted(msg)} className="text-orange-500">
+                <MessageSquare className="mr-2 h-4 w-4" /> Tandai Dihapus
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedMsg(msg)
+                  setDeleteOpen(true)
+                }}
+                className="text-red-500"
+              >
+                <Trash2 className="mr-2 h-4 w-4" /> Hapus Permanen
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight mb-1">Message Management</h1>
-          <p className="text-zinc-500 font-medium italic">Monitor and moderate all communication channels</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" className="rounded-full gap-2 border-zinc-200 dark:border-zinc-800 h-11">
-            <Download className="h-4 w-4" /> Export Logs
-          </Button>
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari pesan, pengirim, atau room..."
+              className="w-[300px] pl-9 bg-zinc-50 border-zinc-200 text-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <span className="text-sm text-muted-foreground font-medium">{filtered.length} pesan</span>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-          <Input 
-            placeholder="Search messages by content or sender..." 
-            className="h-14 pl-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-2xl"
-          />
-        </div>
-        <Button variant="outline" className="h-14 rounded-2xl px-6 gap-2 border-zinc-200 dark:border-zinc-800">
-          <Filter className="h-4 w-4" /> Filter
-        </Button>
+      <div className="border rounded-md bg-white overflow-hidden shadow-sm">
+        <DataTable columns={messageColumns} data={filtered} />
       </div>
 
-      <div className="rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-zinc-900 shadow-sm">
-        <Table>
-          <TableHeader className="bg-zinc-50 dark:bg-zinc-800/50">
-            <TableRow className="hover:bg-transparent border-zinc-100 dark:border-zinc-800">
-              <TableHead className="font-bold py-6 px-6">Sender</TableHead>
-              <TableHead className="font-bold">Room</TableHead>
-              <TableHead className="font-bold">Message Preview</TableHead>
-              <TableHead className="font-bold">Status</TableHead>
-              <TableHead className="text-right font-bold pr-6">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {MESSAGES.map((msg) => (
-              <TableRow key={msg.id} className="border-zinc-100 dark:border-zinc-800 hover:bg-zinc-50/30 dark:hover:bg-zinc-800/30 transition-colors">
-                <TableCell className="py-6 px-6">
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-10 w-10 border border-zinc-100 dark:border-zinc-800">
-                      <AvatarFallback>{msg.sender[0]}</AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-bold">{msg.sender}</p>
-                      <p className="text-[10px] text-zinc-400 font-bold uppercase">{msg.date}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                   <Badge variant="outline" className="rounded-full px-3 text-[10px] font-bold">{msg.room}</Badge>
-                </TableCell>
-                <TableCell className="max-w-xs">
-                  <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 truncate">{msg.content}</p>
-                </TableCell>
-                <TableCell>
-                  <Badge className={`
-                    rounded-full px-3 h-6 font-black uppercase text-[9px] border-none
-                    ${msg.status === 'safe' ? 'bg-green-500/10 text-green-600' : 
-                      msg.status === 'flagged' ? 'bg-amber-500/10 text-amber-600' : 'bg-red-500/10 text-red-600'}
-                  `}>
-                    {msg.status}
-                  </Badge>
-                </TableCell>
-                <TableCell className="text-right pr-6">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="rounded-full">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="rounded-2xl p-2 w-48">
-                      <DropdownMenuItem className="rounded-xl gap-3 p-3">
-                        <Eye className="h-4 w-4" /> View Thread
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="rounded-xl gap-3 p-3 text-amber-600">
-                        <ShieldAlert className="h-4 w-4" /> Flag Message
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="rounded-xl gap-3 p-3 text-red-500">
-                        <Trash2 className="h-4 w-4" /> Delete Permanently
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      {/* Delete Confirmation */}
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Pesan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda yakin ingin menghapus pesan <span className="font-semibold">{selectedMsg?.id}</span> dari{" "}
+              <span className="font-semibold">{selectedMsg?.sender}</span>? Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={handleDelete}>
+              Hapus Permanen
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
-  );
+  )
 }

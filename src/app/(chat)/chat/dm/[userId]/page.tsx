@@ -1,4 +1,5 @@
 "use client"
+import { useState, useEffect } from "react";
 
 import { 
   MoreVertical, 
@@ -11,7 +12,11 @@ import {
   ShieldAlert,
   Plus,
   Smile,
-  Send
+  Send,
+  X,
+  Mic,
+  VideoOff,
+  PhoneOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -23,6 +28,10 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator 
 } from "@/components/ui/dropdown-menu";
+import { 
+  Dialog, 
+  DialogContent, 
+} from "@/components/ui/dialog";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { ChatInput } from "@/components/chat/chat-input";
 
@@ -35,6 +44,41 @@ const MESSAGES = [
 ] as const;
 
 export default function DMPage({ params }: { params: { userId: string } }) {
+  const [callType, setCallType] = useState<"audio" | "video" | null>(null);
+  const [callStatus, setCallStatus] = useState<"calling" | "connected" | "ended">("calling");
+  const [timer, setTimer] = useState(0);
+
+  useEffect(() => {
+    let interval: any;
+    if (callStatus === "connected") {
+      interval = setInterval(() => {
+        setTimer((prev) => prev + 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [callStatus]);
+
+  useEffect(() => {
+    if (callType) {
+      setCallStatus("calling");
+      setTimer(0);
+      const timeout = setTimeout(() => {
+        setCallStatus("connected");
+      }, 2000);
+      return () => clearTimeout(timeout);
+    }
+  }, [callType]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  const endCall = () => {
+    setCallStatus("ended");
+    setTimeout(() => setCallType(null), 500);
+  };
   return (
     <div className="flex flex-col h-full bg-white relative">
       {/* Chat Header */}
@@ -51,9 +95,23 @@ export default function DMPage({ params }: { params: { userId: string } }) {
             <p className="text-[11px] text-zinc-400 font-bold uppercase tracking-wider">Active now</p>
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <Phone className="h-5 w-5 text-[#1C3422] cursor-pointer hover:opacity-70 transition-opacity" />
-          <Video className="h-5 w-5 text-[#1C3422] cursor-pointer hover:opacity-70 transition-opacity" />
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-10 w-10 rounded-full hover:bg-zinc-100 text-[#1C3422]"
+            onClick={() => setCallType("audio")}
+          >
+            <Phone className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-10 w-10 rounded-full hover:bg-zinc-100 text-[#1C3422]"
+            onClick={() => setCallType("video")}
+          >
+            <Video className="h-5 w-5" />
+          </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-zinc-100">
@@ -124,6 +182,52 @@ export default function DMPage({ params }: { params: { userId: string } }) {
           </div>
         </div>
       </footer>
+      {/* Call Dialog */}
+      <Dialog open={!!callType} onOpenChange={(open) => !open && endCall()}>
+        <DialogContent className="sm:max-w-[400px] p-0 overflow-hidden border-none glass rounded-[3rem] shadow-2xl">
+          <div className={`relative h-[500px] flex flex-col items-center justify-center bg-[#1C3422] transition-all duration-500 ${callType === "video" && callStatus === "connected" ? "bg-zinc-900" : ""}`}>
+            
+            {callType === "video" && callStatus === "connected" && (
+              <div className="absolute inset-0 bg-zinc-800 flex items-center justify-center">
+                <div className="text-white/20 text-9xl font-black italic opacity-10 uppercase tracking-tighter rotate-12">Video Call</div>
+              </div>
+            )}
+
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="relative mb-6">
+                <Avatar className="h-24 w-24 border-4 border-white/10 shadow-2xl">
+                  <AvatarFallback className="bg-zinc-100 text-3xl font-black text-[#1C3422]">S</AvatarFallback>
+                </Avatar>
+                {callStatus === "calling" && (
+                  <div className="absolute inset-0 rounded-full border-4 border-green-500 animate-ping opacity-50" />
+                )}
+              </div>
+              
+              <h3 className="text-2xl font-black text-white mb-2">Sarah Wilson</h3>
+              <p className="text-zinc-400 font-bold uppercase tracking-widest text-[10px]">
+                {callStatus === "calling" ? "Calling..." : callStatus === "connected" ? formatTime(timer) : "Call Ended"}
+              </p>
+            </div>
+
+            {/* Call Controls */}
+            <div className="absolute bottom-12 left-0 right-0 flex justify-center items-center gap-6 z-20">
+              <Button size="icon" className="h-14 w-14 rounded-full bg-white/10 text-white hover:bg-white/20 backdrop-blur-md border border-white/10">
+                <Mic className="h-6 w-6" />
+              </Button>
+              <Button 
+                size="icon" 
+                className="h-16 w-16 rounded-full bg-red-500 text-white hover:bg-red-600 shadow-xl shadow-red-500/30 scale-110 active:scale-95 transition-all"
+                onClick={endCall}
+              >
+                <PhoneOff className="h-7 w-7" />
+              </Button>
+              <Button size="icon" className="h-14 w-14 rounded-full bg-white/10 text-white hover:bg-white/20 backdrop-blur-md border border-white/10">
+                {callType === "video" ? <VideoOff className="h-6 w-6" /> : <MoreVertical className="h-6 w-6" />}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

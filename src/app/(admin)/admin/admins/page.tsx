@@ -1,108 +1,229 @@
 "use client"
 
-import { 
-  Plus, 
-  Search, 
-  ShieldCheck, 
-  MoreHorizontal,
-  Mail,
-  UserCheck,
-  ShieldAlert
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
+import { useState } from "react"
+import Link from "next/link"
+import {
+  Search, Plus, ArrowUpDown, CalendarDays, ShieldCheck, Shield,
+  ShieldAlert, MoreHorizontal, Pencil, Trash2, Eye
+} from "lucide-react"
+import { toast } from "sonner"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { ColumnDef } from "@tanstack/react-table"
+import { DataTable } from "@/components/ui/data-table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
-const ADMINS = [
-  { id: "1", name: "Super Admin", email: "admin@chat.com", role: "Owner", status: "Active" },
-  { id: "2", name: "Sarah Wilson", email: "sarah@chat.com", role: "Moderator", status: "Active" },
-  { id: "3", name: "John Doe", email: "john@chat.com", role: "Editor", status: "Inactive" },
-];
+export type Admin = {
+  id: string
+  name: string
+  email: string
+  role: string
+  status: string
+  lastLogin: string
+}
+
+const INITIAL_ADMINS: Admin[] = [
+  { id: "1", name: "Super Admin", email: "admin@chatin.com", role: "Owner", status: "Active", lastLogin: "6/5/2026" },
+  { id: "2", name: "Sarah Wilson", email: "sarah@chatin.com", role: "Moderator", status: "Active", lastLogin: "6/5/2026" },
+  { id: "3", name: "John Doe", email: "john@chatin.com", role: "Moderator", status: "Active", lastLogin: "5/5/2026" },
+  { id: "4", name: "Harvey Specter", email: "harvey@chatin.com", role: "Editor", status: "Inactive", lastLogin: "1/5/2026" },
+  { id: "5", name: "Jessica Pearson", email: "jessica@chatin.com", role: "Owner", status: "Active", lastLogin: "6/5/2026" },
+]
 
 export default function AdminManagementPage() {
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight mb-1">Admin Management</h1>
-          <p className="text-zinc-500 font-medium italic">Manage team members and their access levels</p>
+  const [admins, setAdmins] = useState<Admin[]>(INITIAL_ADMINS)
+  const [search, setSearch] = useState("")
+  const [revokeOpen, setRevokeOpen] = useState(false)
+  const [selectedAdmin, setSelectedAdmin] = useState<Admin | null>(null)
+
+  const filtered = admins.filter(
+    (a) => a.name.toLowerCase().includes(search.toLowerCase()) || a.email.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  function handleRevoke() {
+    if (!selectedAdmin) return
+    setAdmins((prev) => prev.filter((a) => a.id !== selectedAdmin.id))
+    setRevokeOpen(false)
+    toast.success("Akses dicabut", { description: `${selectedAdmin.name} telah dihapus dari daftar admin.` })
+  }
+
+  const adminColumns: ColumnDef<Admin>[] = [
+    {
+      accessorKey: "name",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          ADMIN <ArrowUpDown className="h-3 w-3 opacity-50" />
         </div>
-        <Button className="rounded-full h-12 px-8 bg-zinc-900 text-white dark:bg-white dark:text-black font-bold gap-2">
-          <Plus className="h-5 w-5" /> Invite Admin
+      ),
+      cell: ({ row }) => {
+        const name = row.getValue("name") as string
+        return (
+          <div className="flex items-center gap-3">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-slate-800 text-white font-semibold text-xs">{name[0]}</AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-semibold text-slate-700 text-sm">{name}</span>
+              <span className="text-xs text-muted-foreground">{row.original.email}</span>
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "role",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          PERAN <ArrowUpDown className="h-3 w-3 opacity-50" />
+        </div>
+      ),
+      cell: ({ row }) => {
+        const role = row.getValue("role") as string
+        return (
+          <div className="flex items-center gap-1.5 text-sm font-medium text-slate-600">
+            {role === "Owner" && <ShieldCheck className="h-3.5 w-3.5 text-amber-500" />}
+            {role === "Moderator" && <Shield className="h-3.5 w-3.5 text-indigo-500" />}
+            {role === "Editor" && <Shield className="h-3.5 w-3.5 text-slate-400" />}
+            {role}
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "status",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          STATUS <ArrowUpDown className="h-3 w-3 opacity-50" />
+        </div>
+      ),
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string
+        return (
+          <Badge
+            variant="secondary"
+            className={`${
+              status === "Active" ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"
+            } rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide border-none`}
+          >
+            {status === "Active" && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 inline-block" />}
+            {status}
+          </Badge>
+        )
+      },
+    },
+    {
+      accessorKey: "lastLogin",
+      header: () => (
+        <div className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+          LOGIN TERAKHIR <ArrowUpDown className="h-3 w-3 opacity-50" />
+        </div>
+      ),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-2 text-muted-foreground text-sm">
+          <CalendarDays className="h-4 w-4 opacity-50" />
+          <span>{row.getValue("lastLogin")}</span>
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      cell: ({ row }) => {
+        const admin = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/admins/${admin.id}`}>
+                  <Eye className="mr-2 h-4 w-4" /> Lihat Detail
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href={`/admin/admins/${admin.id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" /> Edit
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  setSelectedAdmin(admin)
+                  setRevokeOpen(true)
+                }}
+                className="text-red-500"
+              >
+                <ShieldAlert className="mr-2 h-4 w-4" /> Revoke Access
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
+
+  return (
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cari admin..."
+              className="w-[280px] pl-9 bg-zinc-50 border-zinc-200 text-sm"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <span className="text-sm text-muted-foreground font-medium">{filtered.length} admin</span>
+        </div>
+        <Button className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-md text-sm px-4" asChild>
+          <Link href="/admin/admins/create">
+            <Plus className="mr-2 h-4 w-4" /> Invite Admin
+          </Link>
         </Button>
       </div>
-
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-zinc-400" />
-        <Input 
-          placeholder="Search administrators by name or email..." 
-          className="h-14 pl-12 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-sm"
-        />
+      <div className="border rounded-md bg-white overflow-hidden shadow-sm">
+        <DataTable columns={adminColumns} data={filtered} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {ADMINS.map((admin) => (
-          <div 
-            key={admin.id} 
-            className="p-6 rounded-[2.5rem] bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800 shadow-sm space-y-6 group hover:border-zinc-300 dark:hover:border-zinc-700 transition-all"
-          >
-            <div className="flex justify-between items-start">
-              <Avatar className="h-16 w-16 rounded-2xl border-2 border-zinc-50 dark:border-zinc-800">
-                <AvatarFallback className="font-black text-lg">{admin.name[0]}</AvatarFallback>
-              </Avatar>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-10 w-10">
-                    <MoreHorizontal className="h-5 w-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-2xl p-2 w-48">
-                  <DropdownMenuItem className="rounded-xl gap-3 p-3">
-                    <UserCheck className="h-4 w-4" /> Edit Permissions
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="rounded-xl gap-3 p-3 text-red-500">
-                    <ShieldAlert className="h-4 w-4" /> Revoke Access
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <div className="space-y-1">
-              <h3 className="font-black text-xl tracking-tight">{admin.name}</h3>
-              <div className="flex items-center gap-2 text-zinc-500 font-medium text-xs">
-                <Mail className="h-3 w-3" /> {admin.email}
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between pt-4 border-t border-zinc-50 dark:border-zinc-800">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-blue-500" />
-                <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">{admin.role}</span>
-              </div>
-              <Badge className={`
-                rounded-full px-3 h-6 font-black uppercase text-[9px] border-none
-                ${admin.status === 'Active' ? 'bg-green-500/10 text-green-600' : 'bg-zinc-100 text-zinc-400'}
-              `}>
-                {admin.status}
-              </Badge>
-            </div>
-          </div>
-        ))}
-
-        <button className="p-6 rounded-[2.5rem] border-2 border-dashed border-zinc-100 dark:border-zinc-800 flex flex-col items-center justify-center space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group min-h-[250px]">
-          <div className="h-16 w-16 bg-zinc-50 dark:bg-zinc-900 rounded-2xl flex items-center justify-center text-zinc-300 group-hover:text-blue-500 group-hover:bg-blue-50 transition-all">
-            <Plus className="h-8 w-8" />
-          </div>
-          <p className="text-sm font-bold text-zinc-400 group-hover:text-zinc-600">Add New Team Member</p>
-        </button>
-      </div>
+      <AlertDialog open={revokeOpen} onOpenChange={setRevokeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cabut Akses Admin?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Anda yakin ingin mencabut akses admin <span className="font-semibold">{selectedAdmin?.name}</span>? Mereka
+              tidak akan bisa mengakses panel admin lagi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction className="bg-red-600 hover:bg-red-700 text-white" onClick={handleRevoke}>
+              Cabut Akses
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
-  );
+  )
 }

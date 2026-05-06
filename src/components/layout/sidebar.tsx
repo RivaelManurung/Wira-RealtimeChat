@@ -45,7 +45,23 @@ export function Sidebar() {
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-3xl font-black tracking-tighter text-[#1C3422]">Messages</h1>
             <div className="flex items-center gap-2">
-              <Plus className="h-5 w-5 text-[#1C3422] cursor-pointer" />
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-zinc-100 transition-all">
+                    <Plus className="h-5 w-5 text-[#1C3422]" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" sideOffset={8} className="w-56 glass rounded-[2rem] p-2.5 shadow-2xl shadow-zinc-900/10 border-white/50 animate-in fade-in zoom-in-95 duration-200">
+                  <DropdownMenuItem className="rounded-[1.2rem] font-bold text-[#1C3422] focus:bg-[#1C3422] focus:text-white gap-3 py-3 px-4 cursor-pointer transition-colors group">
+                    <MessageSquare className="h-4.5 w-4.5 opacity-70 group-focus:text-white" />
+                    <span className="text-sm">New Direct Message</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="rounded-[1.2rem] font-bold text-[#1C3422] focus:bg-[#1C3422] focus:text-white gap-3 py-3 px-4 cursor-pointer transition-colors group">
+                    <Plus className="h-4.5 w-4.5 opacity-70 group-focus:text-white" />
+                    <span className="text-sm">New Group Chat</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-zinc-100 transition-all">
